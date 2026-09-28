@@ -1,0 +1,387 @@
+import { useEffect, useState } from "react";
+import { api } from "../services/api";
+
+function Property() {
+    const [properties, setProperties] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
+    const [form, setForm] = useState({
+        name: "",
+        address: "",
+        description: "",
+        phone: "",
+    });
+
+    const [editingId, setEditingId] = useState(null);
+
+    const loadProperties = async () => {
+        try {
+            setLoading(true);
+            setError("");
+
+            const response = await api.get(
+                "/properties?page=0&size=100&sortBy=id&direction=asc"
+            );
+
+            setProperties(response.content || []);
+        } catch (error) {
+            setError(error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadProperties();
+    }, []);
+
+    const handleChange = (event) => {
+        setForm({
+            ...form,
+            [event.target.name]: event.target.value,
+        });
+    };
+
+    const resetForm = () => {
+        setForm({
+            name: "",
+            address: "",
+            description: "",
+            phone: "",
+        });
+
+        setEditingId(null);
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+
+        try {
+            setError("");
+
+            if (editingId) {
+                await api.put(
+                    `/properties/${editingId}`,
+                    form
+                );
+            } else {
+                await api.post("/properties", form);
+            }
+
+            resetForm();
+            await loadProperties();
+        } catch (error) {
+            setError(error.message);
+        }
+    };
+
+    const handleEdit = (property) => {
+        setEditingId(property.id);
+
+        setForm({
+            name: property.name || "",
+            address: property.address || "",
+            description: property.description || "",
+            phone: property.phone || "",
+        });
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm("Bạn có chắc muốn xóa Property này?")) {
+            return;
+        }
+
+        try {
+            setError("");
+
+            await api.delete(`/properties/${id}`);
+
+            await loadProperties();
+        } catch (error) {
+            setError(error.message);
+        }
+    };
+
+    return (
+        <div>
+            <div style={styles.header}>
+                <div>
+                    <h1>Quản lý cơ sở lưu trú</h1>
+                    <p style={styles.subtitle}>
+                        Quản lý các homestay trong hệ thống
+                    </p>
+                </div>
+            </div>
+
+            {error && (
+                <div style={styles.error}>
+                    {error}
+                </div>
+            )}
+
+            {/* Form */}
+            <div style={styles.formCard}>
+                <h2>
+                    {editingId
+                        ? "Chỉnh sửa cơ sở lưu trú"
+                        : "Thêm cơ sở lưu trú"}
+                </h2>
+
+                <form onSubmit={handleSubmit}>
+                    <div style={styles.formGrid}>
+
+                        <div style={styles.formGroup}>
+                            <label>Tên cơ sở lưu trú</label>
+
+                            <input
+                                type="text"
+                                name="name"
+                                value={form.name}
+                                onChange={handleChange}
+                                placeholder="Ví dụ: Homestay Hà Nội"
+                                required
+                            />
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label>Địa chỉ</label>
+
+                            <input
+                                type="text"
+                                name="address"
+                                value={form.address}
+                                onChange={handleChange}
+                                placeholder="Ví dụ: Cầu Giấy, Hà Nội"
+                                required
+                            />
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label>Số điện thoại</label>
+
+                            <input
+                                type="text"
+                                name="phone"
+                                value={form.phone}
+                                onChange={handleChange}
+                                placeholder="0901234567"
+                            />
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label>Mô tả</label>
+
+                            <input
+                                type="text"
+                                name="description"
+                                value={form.description}
+                                onChange={handleChange}
+                                placeholder="Mô tả cơ sở lưu trú"
+                            />
+                        </div>
+
+                    </div>
+
+                    <div style={styles.buttonGroup}>
+                        <button
+                            type="submit"
+                            style={styles.primaryButton}
+                        >
+                            {editingId
+                                ? "Cập nhật"
+                                : "Thêm cơ sở lưu trú"}
+                        </button>
+
+                        {editingId && (
+                            <button
+                                type="button"
+                                onClick={resetForm}
+                                style={styles.cancelButton}
+                            >
+                                Hủy
+                            </button>
+                        )}
+                    </div>
+                </form>
+            </div>
+
+            {/* Table */}
+            <div style={styles.tableCard}>
+                <h2>Danh sách cơ sở lưu trú</h2>
+
+                {loading ? (
+                    <p>Đang tải dữ liệu...</p>
+                ) : properties.length === 0 ? (
+                    <p>Chưa có cơ sở lưu trú nào.</p>
+                ) : (
+                    <table style={styles.table}>
+                        <thead>
+                        <tr>
+                            <th style={styles.th}>ID</th>
+                            <th style={styles.th}>Tên</th>
+                            <th style={styles.th}>Địa chỉ</th>
+                            <th style={styles.th}>Số điện thoại</th>
+                            <th style={styles.th}>Mô tả</th>
+                            <th style={styles.th}>Thao tác</th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        {properties.map((property) => (
+                            <tr key={property.id}>
+                                <td style={styles.td}>
+                                    {property.id}
+                                </td>
+
+                                <td style={styles.td}>
+                                    {property.name}
+                                </td>
+
+                                <td style={styles.td}>
+                                    {property.address}
+                                </td>
+
+                                <td style={styles.td}>
+                                    {property.phone || "-"}
+                                </td>
+
+                                <td style={styles.td}>
+                                    {property.description || "-"}
+                                </td>
+
+                                <td style={styles.td}>
+                                    <button
+                                        onClick={() =>
+                                            handleEdit(property)
+                                        }
+                                        style={styles.editButton}
+                                    >
+                                        Sửa
+                                    </button>
+
+                                    <button
+                                        onClick={() =>
+                                            handleDelete(property.id)
+                                        }
+                                        style={styles.deleteButton}
+                                    >
+                                        Xóa
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+        </div>
+    );
+}
+
+const styles = {
+    header: {
+        marginBottom: "20px",
+    },
+
+    subtitle: {
+        color: "#6b7280",
+    },
+
+    error: {
+        padding: "12px",
+        marginBottom: "20px",
+        backgroundColor: "#fee2e2",
+        color: "#b91c1c",
+        borderRadius: "8px",
+    },
+
+    formCard: {
+        backgroundColor: "white",
+        padding: "24px",
+        borderRadius: "12px",
+        marginBottom: "24px",
+        boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
+    },
+
+    formGrid: {
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "16px",
+    },
+
+    formGroup: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "6px",
+    },
+
+    buttonGroup: {
+        marginTop: "20px",
+        display: "flex",
+        gap: "10px",
+    },
+
+    primaryButton: {
+        padding: "10px 18px",
+        backgroundColor: "#2563eb",
+        color: "white",
+        border: "none",
+        borderRadius: "6px",
+        cursor: "pointer",
+    },
+
+    cancelButton: {
+        padding: "10px 18px",
+        backgroundColor: "#6b7280",
+        color: "white",
+        border: "none",
+        borderRadius: "6px",
+        cursor: "pointer",
+    },
+
+    tableCard: {
+        backgroundColor: "white",
+        padding: "24px",
+        borderRadius: "12px",
+        boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
+        overflowX: "auto",
+    },
+
+    table: {
+        width: "100%",
+        borderCollapse: "collapse",
+    },
+
+    th: {
+        textAlign: "left",
+        padding: "12px",
+        borderBottom: "2px solid #e5e7eb",
+    },
+
+    td: {
+        padding: "12px",
+        borderBottom: "1px solid #e5e7eb",
+    },
+
+    editButton: {
+        padding: "7px 12px",
+        marginRight: "8px",
+        backgroundColor: "#f59e0b",
+        color: "white",
+        border: "none",
+        borderRadius: "5px",
+        cursor: "pointer",
+    },
+
+    deleteButton: {
+        padding: "7px 12px",
+        backgroundColor: "#dc2626",
+        color: "white",
+        border: "none",
+        borderRadius: "5px",
+        cursor: "pointer",
+    },
+};
+
+export default Property;
